@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { SmallSpinner } from "../index";
 import axios from "axios";
 
-function ForgotPassword({showAlert = ()=>{}}) {
+function ForgotPassword({ showAlert = () => {} }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -10,29 +11,94 @@ function ForgotPassword({showAlert = ()=>{}}) {
   const [otpSent, setOtpSent] = useState("");
   const [otpVerified, setOtpVerified] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const handleResetPassword = () => {};
-
-  const handleSendOtp = async () => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
+  const navigate = useNavigate();
+  const handleResetPassword = async (e) => {
     try {
-      setLoading(prev=>!prev);
-      if(!email){
-        showAlert("Email required!","error");
-      }else{
-        const response = await axios.post("/api/auth/forgotPassword",{email});
-        if(!response?.data?.success){
-          showAlert(response?.data?.message || "Error sending OTP","error");
+      e.preventDefault();
+      if (!password || !confirmPassword) {
+        showAlert("All fields required!", "error");
+      } else if (password !== confirmPassword) {
+        showAlert("Password and confirm password doesn't match", "error");
+      } else {
+        setLoading((prev) => !prev);
+        const response = await axios.post("/api/auth/setNewPassword", {
+          email,
+          password,
+          confirmPassword,
+        });
+        if (!response?.data?.success) {
+          showAlert(
+            response?.data?.message || "Something Went Wrong!",
+            "error"
+          );
+        } else {
+          showAlert(
+            response?.data?.message ||
+              "Password Changed Successfull! you can login now!",
+            "success"
+          );
+          navigate("/login");
         }
-        showAlert(response?.data?.message || "OTP sent successfully","success");
       }
     } catch (error) {
       console.error(error);
     } finally {
-      setLoading(prev=>!prev)
+      setLoading((prev) => !prev);
     }
   };
 
-  const handleVerifyOtp = () => {};
+  const handleSendOtp = async () => {
+    try {
+      setLoading((prev) => !prev);
+      if (!email) {
+        showAlert("Email required!", "error");
+      } else {
+        const response = await axios.post("/api/auth/forgotPassword", {
+          email,
+        });
+        if (!response?.data?.success) {
+          showAlert(response?.data?.message || "Error sending OTP", "error");
+        } else {
+          setOtpSent((prev) => !prev);
+          showAlert(
+            response?.data?.message || "OTP sent successfully",
+            "success"
+          );
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading((prev) => !prev);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    try {
+      setLoading((prev) => !prev);
+
+      const response = await axios.post("/api/auth/verifyOtp", { email, otp });
+
+      if (!response?.data.success) {
+        showAlert(
+          response?.data?.message ||
+            "Something went wrong! Please try again later",
+          "error"
+        );
+        return;
+      }
+
+      showAlert(response?.data?.message || "OTP Verified!", "success");
+      setOtpVerified((prev) => !prev);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading((prev) => !prev);
+    }
+  };
 
   return (
     <>
@@ -48,7 +114,7 @@ function ForgotPassword({showAlert = ()=>{}}) {
           </div>
           <form onSubmit={handleResetPassword}>
             <div className="space-y-6">
-              <div>
+              <div className={`${otpSent ? "hidden" : ""}`}>
                 <label
                   htmlFor="email"
                   className="text-gray-800 text-sm mb-2 block"
@@ -67,7 +133,7 @@ function ForgotPassword({showAlert = ()=>{}}) {
               </div>
 
               {email && (
-                <div className="!mt-8">
+                <div className={`!mt-8 ${otpSent ? "hidden" : ""}`}>
                   <button
                     onClick={handleSendOtp}
                     type="button"
@@ -85,7 +151,7 @@ function ForgotPassword({showAlert = ()=>{}}) {
               )}
 
               {otpSent && (
-                <div>
+                <div className={`${otpVerified ? "hidden" : ""}`}>
                   <label
                     htmlFor="otp"
                     className="text-gray-800 text-sm mb-2 block"
@@ -105,7 +171,7 @@ function ForgotPassword({showAlert = ()=>{}}) {
               )}
 
               {otp && (
-                <div className="!mt-8">
+                <div className={`!mt-8 ${otpVerified ? "hidden" : null}`}>
                   <button
                     onClick={handleVerifyOtp}
                     type="button"
